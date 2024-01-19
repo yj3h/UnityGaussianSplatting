@@ -51,6 +51,12 @@ namespace GaussianSplatting.Editor
         int m_PrevVertexCount;
         long m_PrevFileSize;
 
+        string batchPaths;
+        string batchPathEnd;
+        string startIndex;
+        string endIndex;
+        
+
         bool isUsingChunks =>
             m_FormatPos != GaussianSplatAsset.VectorFormat.Float32 ||
             m_FormatScale != GaussianSplatAsset.VectorFormat.Float32 ||
@@ -174,7 +180,38 @@ namespace GaussianSplatting.Editor
             {
                 EditorGUILayout.HelpBox(m_ErrorMessage, MessageType.Error);
             }
+
+            EditorGUILayout.Space();     
+            EditorGUILayout.TextField("Current Input File Path", m_InputFile);
+
+            EditorGUILayout.Space();     
+            EditorGUILayout.Space();     
+            GUILayout.Label("Batch Create Assets", EditorStyles.boldLabel);       
+            batchPaths = EditorGUILayout.TextField("Asset Path", batchPaths);
+            startIndex = EditorGUILayout.TextField("Start Index", startIndex);
+            endIndex = EditorGUILayout.TextField("End Index", endIndex);
+            batchPathEnd = EditorGUILayout.TextField("Batch Path End", batchPathEnd);
+            if(GUILayout.Button("Create Batch Assets"))
+            {   
+                int sId;
+                int eId;                
+                var parseS = int.TryParse(startIndex, out sId);
+                var parseE = int.TryParse(endIndex, out eId);
+
+                if(!parseS || !parseE){
+                    Debug.LogError("Start and End Index must be integers");
+                    return;
+                }
+                string[] paths = new string[eId - sId + 1];
+                for(int i = sId; i <= eId; i++){
+                    int digitCount = startIndex.Length;                    
+                    paths[i - sId] = batchPaths + i.ToString().PadLeft(digitCount, '0') + batchPathEnd;
+                }
+                BatchCreateAssets(paths);
+            }
         }
+
+        
 
         void ApplyQualityLevel()
         {
@@ -243,6 +280,18 @@ namespace GaussianSplatting.Editor
                 EditorUtility.CopySerialized(asset, result);
             }
             return result;
+        }
+
+        unsafe void BatchCreateAssets(string[] filePaths){
+            for(int i = 0; i < filePaths.Length; i++){
+                m_InputFile = filePaths[i];
+                // check if file exists
+                if(!File.Exists(m_InputFile)){
+                    Debug.LogError($"File {m_InputFile} does not exist");
+                    continue;
+                }
+                CreateAsset();
+            }
         }
 
         unsafe void CreateAsset()
